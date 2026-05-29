@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendrier de Dates — Andreia</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --red: #c0001a; --red2: #8a0013;
+  --gold2: #ffd700; --gold: #c9960c;
+  --bg: #faf7f4; --white: #ffffff;
+  --border: #e5ddd5; --text: #1a0a0a; --muted: #9a7070;
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.page { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+.header { text-align: center; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+.header-sup { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: var(--red); margin-bottom: 6px; }
+.header h1 { font-family: 'Playfair Display', serif; font-size: 36px; font-weight: 700; }
+.header h1 em { color: var(--red); font-style: italic; }
+
+.narrator { display: flex; gap: 16px; align-items: flex-start; background: var(--white); border: 1px solid #f0d0d5; border-radius: 14px; padding: 1.2rem 1.4rem; margin-bottom: 1.5rem; box-shadow: 0 2px 12px rgba(192,0,26,0.07); }
+.narrator-face { width: 72px; height: 72px; border-radius: 50%; background: var(--red); display: flex; align-items: center; justify-content: center; font-size: 32px; flex-shrink: 0; }
+.narrator-body { flex: 1; }
+.narrator-name { font-size: 10px; font-weight: 500; color: var(--red); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+.narrator-text { font-family: 'Playfair Display', serif; font-size: 14px; font-style: italic; line-height: 1.7; }
+
+.layout { display: grid; grid-template-columns: 1fr 250px; gap: 1.25rem; align-items: start; }
+
+.cal-card { background: var(--white); border-radius: 14px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+.cal-title { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; }
+.nav-btn { width: 30px; height: 30px; border: 1px solid var(--border); background: none; border-radius: 7px; cursor: pointer; font-size: 16px; color: var(--muted); display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+.nav-btn:hover { border-color: var(--red); color: var(--red); background: #fff0f2; }
+
+.cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); background: #fdf5f6; border-bottom: 1px solid var(--border); }
+.cal-wday { text-align: center; font-size: 11px; font-weight: 500; color: var(--muted); padding: 7px 2px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* GRILLE — on utilise une table pour éviter les bugs CSS grid sur les bordures */
+.cal-table { width: 100%; border-collapse: collapse; }
+.cal-table td {
+  width: 14.28%;
+  min-height: 80px;
+  height: 80px;
+  vertical-align: top;
+  padding: 5px 5px 4px;
+  border: 1px solid var(--border);
+  background: var(--white);
+  transition: background 0.1s;
+  position: relative;
+}
+.cal-table td.faded { background: #faf5f5; }
+.cal-table td.today { background: #fff5f6; }
+.cal-table td.dropzone { background: #ffe8ec !important; outline: 2px dashed var(--red); outline-offset: -3px; }
+
+.day-num { font-size: 11px; font-weight: 500; color: var(--muted); line-height: 1; margin-bottom: 3px; display: block; }
+.today .day-num { background: var(--red); color: white; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.faded .day-num { color: #ccc; }
+
+.chip { display: flex; align-items: center; font-size: 10px; padding: 2px 4px; border-radius: 20px; margin-top: 2px; overflow: hidden; gap: 2px; }
+.chip-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.chip-del { flex-shrink: 0; cursor: pointer; opacity: 0.5; font-size: 9px; padding: 0 1px; }
+.chip-del:hover { opacity: 1; }
+.chip.vip { background: linear-gradient(90deg,#7a5500,#c9960c,#ffd700,#c9960c,#7a5500); background-size: 200%; color: #3d2800; font-weight: 600; border: 1px solid #ffd700; animation: gold 3s linear infinite; }
+@keyframes gold { 0%{background-position:0%} 100%{background-position:200%} }
+.chip.normal { background: #ffeef0; color: #8a001a; border: 1px solid rgba(192,0,26,0.15); }
+
+.sidebar { background: var(--white); border-radius: 14px; border: 1px solid var(--border); padding: 1.1rem; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+.section-title { font-size: 10px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+.pretendants { display: flex; flex-direction: column; gap: 5px; margin-bottom: 1.2rem; }
+.pretendant { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--border); font-size: 13px; cursor: grab; user-select: none; transition: transform 0.12s, border-color 0.12s; }
+.pretendant:hover { transform: translateX(3px); border-color: rgba(192,0,26,0.3); }
+.pretendant:active { cursor: grabbing; }
+.pretendant.is-vip { background: linear-gradient(135deg,#fffbe6,#fff5c0); border-color: var(--gold2); font-weight: 600; color: #4a3000; }
+.pretendant.is-normal { background: var(--bg); }
+
+.legend { border-top: 1px solid var(--border); padding-top: 1rem; margin-bottom: 1rem; }
+.legend-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+.save-area { border-top: 1px solid var(--border); padding-top: 1rem; }
+.save-btn { width: 100%; padding: 10px; background: var(--red); color: white; border: none; border-radius: 9px; font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.15s; }
+.save-btn:hover { background: var(--red2); }
+.save-btn:disabled { background: #bbb; cursor: not-allowed; }
+.save-msg { font-size: 11px; text-align: center; margin-top: 5px; min-height: 14px; }
+.save-msg.ok { color: #1a7a1a; } .save-msg.err { color: var(--red); }
+.sync-row { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); margin-top: 6px; }
+.sync-led { width: 7px; height: 7px; border-radius: 50%; background: #bbb; flex-shrink: 0; }
+.sync-led.on { background: #2d8a2a; animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(10,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+.modal-bg.show { display: flex; }
+.modal { background: var(--white); border-radius: 18px; padding: 1.75rem; width: 350px; max-width: 94vw; box-shadow: 0 16px 50px rgba(0,0,0,0.22); animation: pop 0.18s ease; }
+@keyframes pop { from{transform:scale(0.88);opacity:0} to{transform:scale(1);opacity:1} }
+.modal-title { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; margin-bottom: 1.1rem; }
+.modal-field { margin-bottom: 10px; }
+.modal-label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; display: block; margin-bottom: 4px; }
+.modal-field select, .modal-field input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--bg); outline: none; }
+.modal-field select:focus, .modal-field input[type=text]:focus { border-color: var(--red); }
+.narrator-comment { display: none; background: #fff5f6; border-left: 3px solid var(--red); border-radius: 0 8px 8px 0; padding: 9px 12px; margin-top: 10px; }
+.narrator-comment.show { display: block; }
+.nc-who { font-size: 10px; color: var(--red); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+.nc-text { font-family: 'Playfair Display', serif; font-style: italic; font-size: 12.5px; color: #6a000f; line-height: 1.6; }
+.modal-btns { display: flex; gap: 8px; margin-top: 1.3rem; }
+.btn-annuler { flex: 1; padding: 9px; border: 1px solid var(--border); background: var(--bg); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.btn-annuler:hover { background: #ede5e0; }
+.btn-ok { flex: 2; padding: 9px; background: var(--red); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.btn-ok:hover { background: var(--red2); }
+
+@media (max-width: 650px) { .layout { grid-template-columns: 1fr; } .cal-table td { height: 60px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-sup">★ Agenda Privé ★</div>
+    <h1>Calendrier de <em>Dates</em></h1>
+  </div>
+
+  <div class="narrator">
+    <div class="narrator-face">🎩</div>
+    <div class="narrator-body">
+      <div class="narrator-name">★ Le Narrateur ★</div>
+      <div class="narrator-text" id="narrateur-texte">Bonjour Andreia ! Voici votre calendrier personnel. Ayant de nombreux prétendants, vous vous devez de maintenir votre agenda à jour… Les occasions ne se présentent pas deux fois, et votre cœur mérite d'être bien organisé. Faites glisser un prétendant sur une date pour planifier votre prochain rendez-vous galant !</div>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="cal-card">
+      <div class="cal-nav">
+        <button class="nav-btn" id="btn-prev">&#8249;</button>
+        <div class="cal-title" id="cal-titre"></div>
+        <button class="nav-btn" id="btn-next">&#8250;</button>
+      </div>
+      <div class="cal-weekdays">
+        <div class="cal-wday">Lun</div><div class="cal-wday">Mar</div><div class="cal-wday">Mer</div>
+        <div class="cal-wday">Jeu</div><div class="cal-wday">Ven</div><div class="cal-wday">Sam</div><div class="cal-wday">Dim</div>
+      </div>
+      <table class="cal-table"><tbody id="cal-body"></tbody></table>
+    </div>
+
+    <div class="sidebar">
+      <div class="section-title">Prétendants</div>
+      <div class="pretendants" id="pretendants"></div>
+      <div class="legend">
+        <div class="section-title">Légende</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#ffd700;border:1px solid #c9960c;"></div>VIP — Priorité absolue</div>
+        <div class="legend-row"><div class="legend-dot" style="background:#ffeef0;border:1px solid rgba(192,0,26,0.2);"></div>Rendez-vous planifié</div>
+      </div>
+      <div class="save-area">
+        <button class="save-btn" id="save-btn">💾 Sauvegarder</button>
+        <div class="save-msg" id="save-msg"></div>
+        <div class="sync-row"><div class="sync-led" id="sync-led"></div><span id="sync-txt">Chargement...</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <div class="modal-title" id="modal-titre">Planifier un rendez-vous</div>
+    <div class="modal-field">
+      <label class="modal-label">Type de rendez-vous</label>
+      <select id="modal-type">
+        <option>🍷 Dîner romantique</option>
+        <option>☕ Café</option>
+        <option>🎬 Cinéma</option>
+        <option>🎭 Soirée mystère</option>
+        <option>🧺 Pique-nique</option>
+        <option>🚶 Balade</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Objectif</label>
+      <select id="modal-objectif">
+        <option>💋 Bisous</option>
+        <option>🔥 Pécho</option>
+        <option>🤝 Amical (vraiment ?)</option>
+        <option>💍 Sérieux</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Note personnelle</label>
+      <input type="text" id="modal-note" placeholder="ex : pas oublier le mascara...">
+    </div>
+    <div class="narrator-comment" id="nc-box">
+      <div class="nc-who">★ Le Narrateur ★</div>
+      <div class="nc-text" id="nc-texte"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-annuler" id="btn-annuler">Annuler</button>
+      <button class="btn-ok" id="btn-ok">Confirmer ✓</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var BIN_ID = '6a1963d521f9ee59d2990464';
+var API_KEY = '$2a$10$Exaf2Kga4P7uL/Z0PT5Q0ezMFB.tJa2HWUrTSap8d7IQBy7A1.GCK';
+var API_URL = 'https://api.jsonbin.io/v3/b/' + BIN_ID;
+
+var PERSONNES = [
+  { nom: 'Macilya Saoudi', vip: true },
+  { nom: 'Renaud Hanquez', vip: false },
+  { nom: 'Samir', vip: false },
+  { nom: 'Élise Lemarchand', vip: false },
+  { nom: 'Cam', vip: false },
+  { nom: 'Charlotte', vip: false },
+  { nom: 'José', vip: false },
+  { nom: 'Malika', vip: false },
+  { nom: 'Charline', vip: false }
+];
+
+var COMMENTAIRES = {
+  'Macilya Saoudi': "AAAH, excellent choix ! Vous avez décidément beaucoup de goût, Madame Bossavit. Je ne pouvais espérer mieux. Chapeau bas.",
+  'Renaud Hanquez': "Hmm… Je suis au regret de vous informer que vous ne pouvez pas fréquenter cette personne. Il est marié. Dommage, vraiment dommage.",
+  'Samir': "Choix TRÈS TRÈS bizarre… mais bon, qui suis-je pour juger, hein ? Après tout, c'est votre vie. Je suppose.",
+  'Élise Lemarchand': "Elle est mariée, a des enfants… et entre nous, je crois sincèrement qu'elle préfère Macilya Saoudi.",
+  'Cam': "Hmm… mouais ? Je ne dis pas non, mais je ne dis pas oui non plus. Je reste neutre. C'est mon droit.",
+  'Charlotte': "Bon, d'accord, je comprends. Elle est incroyable aussi, avouons-le. Je valide… du bout des lèvres.",
+  'José': "Que dire… Êtes-vous soûle, Andreia ? Je pose la question sérieusement et sans jugement.",
+  'Malika': "Non non non. Elle préfère Macilya. C'est un fait établi. Passez votre chemin.",
+  'Charline': "Bon… ok. Je n'ai rien à ajouter. Bon ok."
+};
+
+var MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+var moisCourant = new Date().getMonth();
+var anneeCourante = new Date().getFullYear();
+var donneesCalendrier = {};
+var personneDragee = null;
+var dropEnCours = null;
+
+// SYNC
+function syncLed(on, txt) {
+  document.getElementById('sync-led').className = 'sync-led' + (on ? ' on' : '');
+  document.getElementById('sync-txt').textContent = txt;
+}
+
+function chargerDepuisBin() {
+  syncLed(false, 'Chargement...');
+  fetch(API_URL + '/latest', { headers: { 'X-Master-Key': API_KEY } })
+    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function(data) {
+      donneesCalendrier = data.record || {};
+      syncLed(true, 'Synchronisé');
+      renderCalendrier();
+    })
+    .catch(function() { syncLed(false, 'Hors ligne'); renderCalendrier(); });
+}
+
+function sauvegarderDansBin() {
+  var btn = document.getElementById('save-btn');
+  var msg = document.getElementById('save-msg');
+  btn.disabled = true; btn.textContent = '⏳ Sauvegarde...';
+  syncLed(false, 'Sauvegarde...');
+  fetch(API_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
+    body: JSON.stringify(donneesCalendrier)
+  })
+  .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+  .then(function() {
+    msg.textContent = '✓ Calendrier sauvegardé !'; msg.className = 'save-msg ok';
+    syncLed(true, 'Synchronisé');
+    setTimeout(function() { msg.textContent = ''; }, 4000);
+  })
+  .catch(function() {
+    msg.textContent = 'Erreur, réessayez.'; msg.className = 'save-msg err';
+    syncLed(false, 'Erreur');
+  })
+  .finally(function() { btn.disabled = false; btn.textContent = '💾 Sauvegarder'; });
+}
+
+// PRETENDANTS
+function renderPretendants() {
+  var c = document.getElementById('pretendants');
+  c.innerHTML = '';
+  PERSONNES.forEach(function(p) {
+    var el = document.createElement('div');
+    el.className = 'pretendant ' + (p.vip ? 'is-vip' : 'is-normal');
+    el.setAttribute('draggable', 'true');
+    el.dataset.nom = p.nom;
+    el.innerHTML = '<span>' + (p.vip ? '👑' : '👤') + '</span>' + p.nom;
+    el.addEventListener('dragstart', function(e) {
+      personneDragee = p.nom;
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData('text/plain', p.nom);
+      setTimeout(function() { el.style.opacity = '0.4'; }, 0);
+    });
+    el.addEventListener('dragend', function() { el.style.opacity = '1'; });
+    c.appendChild(el);
+  });
+}
+
+// CALENDRIER
+function cleDate(y, m, d) {
+  return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+
+function renderCalendrier() {
+  var today = new Date();
+  document.getElementById('cal-titre').textContent = MOIS[moisCourant] + ' ' + anneeCourante;
+
+  var tbody = document.getElementById('cal-body');
+  tbody.innerHTML = '';
+
+  var premierJour = new Date(anneeCourante, moisCourant, 1);
+  var jourSemaine = premierJour.getDay();
+  if (jourSemaine === 0) jourSemaine = 7; // dim -> 7, lun -> 1
+  var nbJoursMois = new Date(anneeCourante, moisCourant + 1, 0).getDate();
+  var nbJoursPrevMois = new Date(anneeCourante, moisCourant, 0).getDate();
+
+  var cellules = [];
+  for (var i = 0; i < 42; i++) {
+    var jour, mois = moisCourant, annee = anneeCourante, autresMois = false;
+    if (i < jourSemaine - 1) {
+      jour = nbJoursPrevMois - (jourSemaine - 2) + i;
+      autresMois = true;
+      mois = moisCourant - 1;
+      if (mois < 0) { mois = 11; annee = anneeCourante - 1; }
+    } else if (i >= jourSemaine - 1 + nbJoursMois) {
+      jour = i - (jourSemaine - 1 + nbJoursMois) + 1;
+      autresMois = true;
+      mois = moisCourant + 1;
+      if (mois > 11) { mois = 0; annee = anneeCourante + 1; }
+    } else {
+      jour = i - jourSemaine + 2;
+    }
+    cellules.push({ jour: jour, mois: mois, annee: annee, autresMois: autresMois });
+  }
+
+  // 6 lignes de 7
+  for (var sem = 0; sem < 6; sem++) {
+    var tr = document.createElement('tr');
+    for (var col = 0; col < 7; col++) {
+      var info = cellules[sem * 7 + col];
+      var estAujourdhui = !info.autresMois
+        && info.jour === today.getDate()
+        && moisCourant === today.getMonth()
+        && anneeCourante === today.getFullYear();
+
+      var cle = cleDate(info.annee, info.mois, info.jour);
+      var td = document.createElement('td');
+      td.className = (info.autresMois ? 'faded' : '') + (estAujourdhui ? ' today' : '');
+      td.dataset.cle = cle;
+
+      // numéro du jour
+      var numEl = document.createElement('span');
+      numEl.className = 'day-num';
+      numEl.textContent = info.jour;
+      td.appendChild(numEl);
+
+      // chips
+      var entrees = donneesCalendrier[cle] || [];
+      entrees.forEach(function(entree, idx) {
+        var chip = document.createElement('div');
+        var isVip = entree.nom === 'Macilya Saoudi';
+        chip.className = 'chip ' + (isVip ? 'vip' : 'normal');
+        chip.title = entree.nom + ' — ' + entree.type + ' — ' + entree.objectif + (entree.note ? ' · ' + entree.note : '');
+
+        var label = document.createElement('span');
+        label.className = 'chip-label';
+        label.textContent = (isVip ? '👑 ' : '') + entree.nom.split(' ')[0];
+        chip.appendChild(label);
+
+        var del = document.createElement('span');
+        del.className = 'chip-del';
+        del.textContent = '✕';
+        (function(k, ix) {
+          del.addEventListener('click', function(e) {
+            e.stopPropagation();
+            donneesCalendrier[k].splice(ix, 1);
+            if (donneesCalendrier[k].length === 0) delete donneesCalendrier[k];
+            renderCalendrier();
+          });
+        })(cle, idx);
+        chip.appendChild(del);
+        td.appendChild(chip);
+      });
+
+      // drag & drop
+      td.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('dropzone');
+      });
+      td.addEventListener('dragleave', function() {
+        this.classList.remove('dropzone');
+      });
+      td.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('dropzone');
+        var nom = personneDragee || e.dataTransfer.getData('text/plain');
+        if (nom) {
+          dropEnCours = { cle: this.dataset.cle, nom: nom };
+          ouvrirModal(nom);
+          personneDragee = null;
+        }
+      });
+
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+// MODAL
+function ouvrirModal(nom) {
+  document.getElementById('modal-titre').textContent = '📅 Rendez-vous avec ' + nom;
+  document.getElementById('modal-note').value = '';
+  var commentaire = COMMENTAIRES[nom];
+  var nc = document.getElementById('nc-box');
+  if (commentaire) {
+    document.getElementById('nc-texte').textContent = '« ' + commentaire + ' »';
+    nc.classList.add('show');
+  } else {
+    nc.classList.remove('show');
+  }
+  document.getElementById('modal-bg').classList.add('show');
+}
+
+function fermerModal() {
+  document.getElementById('modal-bg').classList.remove('show');
+  dropEnCours = null;
+}
+
+document.getElementById('btn-ok').addEventListener('click', function() {
+  if (!dropEnCours) return;
+  if (!donneesCalendrier[dropEnCours.cle]) donneesCalendrier[dropEnCours.cle] = [];
+  donneesCalendrier[dropEnCours.cle].push({
+    nom: dropEnCours.nom,
+    type: document.getElementById('modal-type').value,
+    objectif: document.getElementById('modal-objectif').value,
+    note: document.getElementById('modal-note').value
+  });
+  if (COMMENTAIRES[dropEnCours.nom]) {
+    document.getElementById('narrateur-texte').textContent = COMMENTAIRES[dropEnCours.nom];
+  }
+  fermerModal();
+  renderCalendrier();
+  // Sauvegarde automatique après chaque ajout
+  sauvegarderDansBin();
+});
+
+document.getElementById('btn-annuler').addEventListener('click', fermerModal);
+document.getElementById('modal-bg').addEventListener('click', function(e) { if (e.target === this) fermerModal(); });
+document.getElementById('btn-prev').addEventListener('click', function() { moisCourant--; if (moisCourant < 0) { moisCourant = 11; anneeCourante--; } renderCalendrier(); });
+document.getElementById('btn-next').addEventListener('click', function() { moisCourant++; if (moisCourant > 11) { moisCourant = 0; anneeCourante++; } renderCalendrier(); });
+document.getElementById('save-btn').addEventListener('click', sauvegarderDansBin);
+
+// Suppression d'un RDV → sauvegarde automatique
+var originalRenderCalendrier = renderCalendrier;
+renderCalendrier = function() {
+  originalRenderCalendrier();
+  // Ajouter un écouteur global pour détecter les suppressions et sauvegarder
+  document.querySelectorAll('.chip-del').forEach(function(btn) {
+    if (!btn.dataset.listenerAttached) {
+      btn.dataset.listenerAttached = '1';
+      btn.addEventListener('click', function() {
+        // La suppression a déjà eu lieu, on sauvegarde après un court délai
+        setTimeout(sauvegarderDansBin, 100);
+      });
+    }
+  });
+};
+
+renderPretendants();
+chargerDepuisBin();
+</script>
+</body>
+</html>
